@@ -7,6 +7,10 @@ import { UserProvider } from './contexts/UserContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import Layout from './components/layout/Layout';
 import HomePage from './pages/HomePage';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Account from './pages/Account';
+import Wishlist from './pages/Wishlist';
 
 // Create placeholder pages for now
 const ShopPage = () => <div>Shop Page</div>;
@@ -27,6 +31,10 @@ const App = () => {
                 <Route path="/shop/*" element={<ShopPage />} />
                 <Route path="/collection" element={<CollectionPage />} />
                 <Route path="/contact" element={<ContactPage />} />
+                <Route path="/login" element={<Login/>} />
+                <Route path="/register" element={<Signup />} />
+                <Route path="/profile" element={<Account />} />
+                <Route path='/wishlist' element={<Wishlist/>}/>
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Layout>
