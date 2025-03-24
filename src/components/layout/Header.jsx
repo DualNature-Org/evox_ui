@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Popover, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from "@mui/material";
 import {
   AppBar,
@@ -27,9 +27,13 @@ import {
   Person as UserIcon,
   KeyboardArrowDown as ArrowDownIcon,
   Menu as MenuIcon,
+  Logout as LogoutIcon,
 } from "@mui/icons-material";
-import { Link, Link as RouterLink } from "react-router-dom";
+import { Link, Link as RouterLink, useNavigate } from "react-router-dom";
 import { useUser } from "../../contexts/UserContext";
+import { productService } from "../../services/productService";
+import { useCart } from "../../contexts/CartContext";
+import MiniCart from "../cart/MiniCart";
 
 // Custom styled components
 const StyledBadge = styled(Badge)(({ theme }) => ({
@@ -70,124 +74,189 @@ const Header = () => {
   const [userAnchorEl, setUserAnchorEl] = useState(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const { user } = useUser();
+  const { user, logout } = useUser();
+  const navigate = useNavigate();
+  const { itemCount } = useCart();
 
   // State for dropdown menus
   const [shopMenuEl, setShopMenuEl] = useState(null);
   const [pagesMenuEl, setPagesMenuEl] = useState(null);
+  const [categories, setCategories] = useState([]);
   const handleUserMenuOpen = (event) => setUserAnchorEl(event.currentTarget);
   const handleUserMenuClose = () => setUserAnchorEl(null);
 
   const [blogMenuEl, setBlogMenuEl] = useState(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
-  // State for search popup
-  const [searchOpen, setSearchOpen] = useState(false);
+  // State for language and currency dropdowns
+  const [languageMenuEl, setLanguageMenuEl] = useState(null);
+  const [currencyMenuEl, setCurrencyMenuEl] = useState(null);
+
+  // Search
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const handleSearchOpen = () => setSearchOpen(true);
   const handleSearchClose = () => setSearchOpen(false);
 
-  // Menu handlers
+  const handleSearchSubmit = () => {
+    if (searchQuery.trim()) {
+      handleSearchClose();
+      navigate(`/shop/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+    }
+  };
+
+  // Handle shopping menu
   const handleShopMenuOpen = (event) => setShopMenuEl(event.currentTarget);
   const handleShopMenuClose = () => setShopMenuEl(null);
 
+  // Handle pages menu
   const handlePagesMenuOpen = (event) => setPagesMenuEl(event.currentTarget);
   const handlePagesMenuClose = () => setPagesMenuEl(null);
 
+  // Handle blog menu
   const handleBlogMenuOpen = (event) => setBlogMenuEl(event.currentTarget);
   const handleBlogMenuClose = () => setBlogMenuEl(null);
 
+  // Language and currency
+  const handleLanguageMenuOpen = (event) => setLanguageMenuEl(event.currentTarget);
+  const handleLanguageMenuClose = () => setLanguageMenuEl(null);
+
+  const handleCurrencyMenuOpen = (event) => setCurrencyMenuEl(event.currentTarget);
+  const handleCurrencyMenuClose = () => setCurrencyMenuEl(null);
+
+  // Handle logout
+  const handleLogout = () => {
+    logout();
+    handleUserMenuClose();
+    navigate("/");
+  };
+
+  // Load categories for shop menu
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await productService.getCategories();
+        setCategories(response.results || []);
+      } catch (error) {
+        console.error("Failed to fetch categories", error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Mobile drawer
   const toggleMobileDrawer = () => setMobileDrawerOpen(!mobileDrawerOpen);
 
-  // Navigation items
+  // Simplified navigation items (removed dropdown menus)
   const navItems = [
     {
       label: "Home",
       path: "/",
-      hasMenu: false,
     },
     {
       label: "Shop",
       path: "/shop",
-      hasMenu: true,
-      menuItems: [
-        { label: "Automatic Wheelchairs", path: "/shop/automatic" },
-        { label: "Manual Wheelchairs", path: "/shop/manual" },
-        { label: "Accessories", path: "/shop/accessories" },
-        { label: "New Arrivals", path: "/shop/new-arrivals" },
-      ],
-      menuHandler: {
-        open: handleShopMenuOpen,
-        close: handleShopMenuClose,
-        element: shopMenuEl,
-      },
     },
     {
-      label: "Collection",
-      path: "/collection",
-      hasMenu: false,
+      label: "About Us",
+      path: "/about",
     },
     {
-      label: "Pages",
-      path: "#",
-      hasMenu: true,
-      menuItems: [
-        { label: "About Us", path: "/about" },
-        { label: "FAQ", path: "/faq" },
-        { label: "Contact", path: "/contact" },
-      ],
-      menuHandler: {
-        open: handlePagesMenuOpen,
-        close: handlePagesMenuClose,
-        element: pagesMenuEl,
-      },
+      label: "Contact",
+      path: "/contact",
     },
     {
       label: "Blog",
       path: "/blog",
-      hasMenu: true,
-      menuItems: [
-        { label: "All Posts", path: "/blog/all" },
-        { label: "Wheelchair Tips", path: "/blog/tips" },
-        { label: "Accessibility", path: "/blog/accessibility" },
-      ],
-      menuHandler: {
-        open: handleBlogMenuOpen,
-        close: handleBlogMenuClose,
-        element: blogMenuEl,
-      },
     },
-    {
-      label: "Contact Us",
-      path: "/contact",
-      hasMenu: false,
-    },
+  ];
+
+  // Language options
+  const languages = [
+    { code: "en", label: "English" },
+    { code: "es", label: "Español" },
+    { code: "fr", label: "Français" },
+    { code: "de", label: "Deutsch" },
+  ];
+
+  // Currency options
+  const currencies = [
+    { code: "USD", label: "US Dollar" },
+    { code: "EUR", label: "Euro" },
+    { code: "GBP", label: "British Pound" },
+    { code: "JPY", label: "Japanese Yen" },
   ];
 
   return (
     <>
+      {/* Top bar */}
       <TopBar>
-        <Container
-          maxWidth="lg"
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Typography variant="body2" sx={{ mr: 2 }}>
-              {isMobile ? "EN" : "English"}
+        <Container maxWidth="lg">
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            {/* Language & Currency */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Button
+                color="inherit"
+                endIcon={<ArrowDownIcon />}
+                size="small"
+                onClick={handleLanguageMenuOpen}
+              >
+                EN
+              </Button>
+              <Menu
+                anchorEl={languageMenuEl}
+                open={Boolean(languageMenuEl)}
+                onClose={handleLanguageMenuClose}
+              >
+                {languages.map((language) => (
+                  <MenuItem
+                    key={language.code}
+                    onClick={handleLanguageMenuClose}
+                  >
+                    {language.label}
+                  </MenuItem>
+                ))}
+              </Menu>
+
+              <Button
+                color="inherit"
+                endIcon={<ArrowDownIcon />}
+                size="small"
+                onClick={handleCurrencyMenuOpen}
+              >
+                USD
+              </Button>
+              <Menu
+                anchorEl={currencyMenuEl}
+                open={Boolean(currencyMenuEl)}
+                onClose={handleCurrencyMenuClose}
+              >
+                {currencies.map((currency) => (
+                  <MenuItem 
+                    key={currency.code} 
+                    onClick={handleCurrencyMenuClose}
+                  >
+                    {currency.label} ({currency.code})
+                  </MenuItem>
+                ))}
+              </Menu>
+            </Box>
+
+            <Typography variant="body2">Call Us 3965410</Typography>
+
+            <Typography variant="body2" color="primary.main">
+              Free delivery on order over €200.00
             </Typography>
-            <Typography variant="body2">{isMobile ? "€" : "EUR"}</Typography>
           </Box>
-
-          <Typography variant="body2">Call Us 3965410</Typography>
-
-          <Typography variant="body2" color="primary.main">
-            Free delivery on order over €200.00
-          </Typography>
         </Container>
       </TopBar>
 
@@ -201,189 +270,217 @@ const Header = () => {
               </Logo>
             </RouterLink>
 
-            {/* Desktop Navigation */}
+            {/* Desktop Navigation - Simplified without dropdowns */}
             {!isMobile && (
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 {navItems.map((item) => (
-                  <div key={item.label}>
-                    {item.hasMenu ? (
-                      <>
-                        <NavButton
-                          onClick={item.menuHandler.open}
-                          endIcon={<ArrowDownIcon />}
-                        >
-                          {item.label}
-                        </NavButton>
-                        <Menu
-                          anchorEl={item.menuHandler.element}
-                          open={Boolean(item.menuHandler.element)}
-                          onClose={item.menuHandler.close}
-                        >
-                          {item.menuItems.map((menuItem) => (
-                            <MenuItem
-                              key={menuItem.label}
-                              onClick={item.menuHandler.close}
-                              component={RouterLink}
-                              to={menuItem.path}
-                            >
-                              {menuItem.label}
-                            </MenuItem>
-                          ))}
-                        </Menu>
-                      </>
-                    ) : (
-                      <NavButton component={RouterLink} to={item.path}>
-                        {item.label}
-                      </NavButton>
-                    )}
-                  </div>
+                  <NavButton
+                    key={item.label}
+                    component={RouterLink}
+                    to={item.path}
+                  >
+                    {item.label}
+                  </NavButton>
                 ))}
               </Box>
             )}
 
-            {/* Mobile menu button */}
+            {/* Actions */}
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              {/* Search */}
+              <IconButton
+                color="inherit"
+                aria-label="search"
+                onClick={handleSearchOpen}
+              >
+                <SearchIcon />
+              </IconButton>
+
+              {/* Wishlist */}
+              <IconButton
+                component={RouterLink}
+                to="/wishlist"
+                color="inherit"
+                aria-label="wishlist"
+              >
+                <WishlistIcon />
+              </IconButton>
+
+              {/* User Account */}
+              {user ? (
+                // Show user menu when logged in
+                <>
+                  <IconButton
+                    color="inherit"
+                    aria-label="account"
+                    onClick={handleUserMenuOpen}
+                  >
+                    <UserIcon />
+                  </IconButton>
+                  <Menu
+                    anchorEl={userAnchorEl}
+                    open={Boolean(userAnchorEl)}
+                    onClose={handleUserMenuClose}
+                  >
+                    <MenuItem 
+                      component={RouterLink} 
+                      to="/account/settings"
+                      onClick={handleUserMenuClose}
+                    >
+                      Profile
+                    </MenuItem>
+                    <MenuItem 
+                      component={RouterLink} 
+                      to="/account/orders"
+                      onClick={handleUserMenuClose}
+                    >
+                      Orders
+                    </MenuItem>
+                    <Divider />
+                    <MenuItem onClick={handleLogout}>
+                      <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
+                      Logout
+                    </MenuItem>
+                  </Menu>
+                </>
+              ) : (
+                // Show login button when logged out
+                <Button
+                  component={RouterLink}
+                  to="/login"
+                  color="inherit"
+                  sx={{ ml: 1 }}
+                >
+                  Login
+                </Button>
+              )}
+
+              {/* Cart with MiniCart integration */}
+              <MiniCart />
+            </Box>
+
+            {/* Mobile Menu Button */}
             {isMobile && (
               <IconButton
-                edge="start"
                 color="inherit"
                 aria-label="menu"
                 onClick={toggleMobileDrawer}
+                sx={{ display: { md: "none" } }}
               >
                 <MenuIcon />
               </IconButton>
             )}
-
-            {/* Icons for search, cart, wishlist, account */}
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <IconButton color="inherit" aria-label="search" onClick={handleSearchOpen}>
-                <SearchIcon />
-              </IconButton>
-
-              <IconButton color="inherit" aria-label="account">
-                <IconButton
-                  color="inherit"
-                  aria-label="account"
-                  onClick={handleUserMenuOpen}
-                >
-                  <UserIcon />
-                </IconButton>
-                <Popover
-                  open={Boolean(userAnchorEl)}
-                  anchorEl={userAnchorEl}
-                  onClose={handleUserMenuClose}
-                  anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-                  transformOrigin={{ vertical: "top", horizontal: "center" }}
-                  disableScrollLock
-                >
-                  <Box sx={{ p: 1, minWidth: 150 }}>
-                    <MenuItem
-                      component={RouterLink}
-                      to="/login"
-                      onClick={handleUserMenuClose}
-                    >
-                      Login
-                    </MenuItem>
-                    <MenuItem
-                      component={RouterLink}
-                      to="/register"
-                      onClick={handleUserMenuClose}
-                    >
-                      Register
-                    </MenuItem>
-                    <MenuItem
-                      component={RouterLink}
-                      to="/profile"
-                      onClick={handleUserMenuClose}
-                    >
-                      My Profile
-                    </MenuItem>
-                  </Box>
-                </Popover>
-              </IconButton>
-
-              <IconButton color="inherit" aria-label="wishlist">
-                <StyledBadge badgeContent={0} color="error">
-                  <Link to='/wishlist'>
-                  <WishlistIcon />
-                  </Link>
-                </StyledBadge>
-              </IconButton>
-
-              <IconButton color="inherit" aria-label="cart">
-                <StyledBadge badgeContent={0} color="error">
-                  <CartIcon />
-                </StyledBadge>
-              </IconButton>
-            </Box>
           </Toolbar>
         </Container>
       </AppBar>
 
-      {/* Mobile Navigation Drawer */}
+      {/* Mobile navigation drawer - Update to match simplified navigation */}
       <Drawer
-        anchor="left"
+        anchor="right"
         open={mobileDrawerOpen}
         onClose={toggleMobileDrawer}
+        sx={{ zIndex: 1300 }}
       >
-        <Box sx={{ width: 250 }} role="presentation">
+        <Box
+          sx={{ width: 280 }}
+          role="presentation"
+        >
           <List>
             {navItems.map((item) => (
               <React.Fragment key={item.label}>
-                <ListItem disablePadding>
-                  <ListItemButton
-                    component={RouterLink}
-                    to={item.path}
-                    onClick={toggleMobileDrawer}
-                  >
-                    <ListItemText primary={item.label} />
-                  </ListItemButton>
-                </ListItem>
-                {item.hasMenu && (
-                  <List disablePadding sx={{ pl: 2 }}>
-                    {item.menuItems.map((subItem) => (
-                      <ListItem key={subItem.label} disablePadding>
-                        <ListItemButton
-                          component={RouterLink}
-                          to={subItem.path}
-                          onClick={toggleMobileDrawer}
-                          sx={{ py: 0.5 }}
-                        >
-                          <ListItemText
-                            primary={subItem.label}
-                            primaryTypographyProps={{ fontSize: "0.9rem" }}
-                          />
-                        </ListItemButton>
-                      </ListItem>
-                    ))}
-                  </List>
-                )}
+                <ListItemButton
+                  component={RouterLink}
+                  to={item.path}
+                  onClick={toggleMobileDrawer}
+                >
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
                 <Divider />
               </React.Fragment>
             ))}
+
+            {!user && (
+              <ListItemButton
+                component={RouterLink}
+                to="/login"
+                onClick={toggleMobileDrawer}
+              >
+                <ListItemText primary="Login / Register" />
+              </ListItemButton>
+            )}
+
+            {user && (
+              <>
+                <ListItemButton
+                  component={RouterLink}
+                  to="/account/profile"
+                  onClick={toggleMobileDrawer}
+                >
+                  <ListItemText primary="My Account" />
+                </ListItemButton>
+                <ListItemButton onClick={handleLogout}>
+                  <ListItemText primary="Logout" />
+                </ListItemButton>
+              </>
+            )}
+
+            {/* Cart link in mobile menu */}
+            <ListItemButton
+              component={RouterLink}
+              to="/cart"
+              onClick={toggleMobileDrawer}
+            >
+              <ListItemText primary="View Cart" />
+              {itemCount > 0 && (
+                <Badge badgeContent={itemCount} color="secondary">
+                  <CartIcon />
+                </Badge>
+              )}
+            </ListItemButton>
+
+            {/* Add mobile drawer links for About and Contact */}
+            <ListItemButton
+              component={RouterLink}
+              to="/about"
+              onClick={toggleMobileDrawer}
+            >
+              <ListItemText primary="About Us" />
+            </ListItemButton>
+            <ListItemButton
+              component={RouterLink}
+              to="/contact"
+              onClick={toggleMobileDrawer}
+            >
+              <ListItemText primary="Contact" />
+            </ListItemButton>
           </List>
         </Box>
       </Drawer>
 
-      {/* Search Popup */}
+      {/* Search Dialog */}
       <Dialog open={searchOpen} onClose={handleSearchClose} fullWidth maxWidth="sm">
-        <DialogTitle>Search</DialogTitle>
+        <DialogTitle>Search Products</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             margin="dense"
             id="search"
-            label="Search for products"
+            label="Search for products..."
             type="text"
             fullWidth
+            variant="outlined"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleSearchSubmit();
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleSearchClose} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={() => alert(`Searching for: ${searchQuery}`)} color="primary">
+          <Button onClick={handleSearchClose}>Cancel</Button>
+          <Button onClick={handleSearchSubmit} variant="contained" color="primary">
             Search
           </Button>
         </DialogActions>

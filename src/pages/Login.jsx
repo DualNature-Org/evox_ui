@@ -1,252 +1,162 @@
 import React, { useState } from "react";
 import {
-  Container,
   TextField,
-  Button,
   Typography,
   Box,
-  Card,
-  CardContent,
-  IconButton,
-  InputAdornment,
-  Alert,
+  Link as MuiLink,
+  Alert
 } from "@mui/material";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { Link as RouterLink, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import LoginImage from "../assets/login.png"; // Update with actual path
+import AuthForm from "../components/auth/AuthForm";
+import PasswordField from "../components/auth/PasswordField";
+import LoginImage from "../assets/login.png";
+import authService from "../services/authService";
+import { useUser } from "../contexts/UserContext";
+import { useNotification } from "../contexts/NotificationContext";
 
 const Login = () => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const { login } = useUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { addNotification } = useNotification();
+  
+  // Get the returnTo parameter from the URL if present
+  const searchParams = new URLSearchParams(location.search);
+  const returnTo = searchParams.get('returnTo') || '/';
 
   // Handle input change
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    
+    // Clear field-specific error when user starts typing
+    if (fieldErrors[e.target.name]) {
+      setFieldErrors({
+        ...fieldErrors,
+        [e.target.name]: ""
+      });
+    }
+  };
+
+  // Validate form before submission
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!formData.username.trim()) {
+      errors.username = "Username/Email is required";
+    }
+    
+    if (!formData.password) {
+      errors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+    }
+    
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   // Handle login submission
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    
     try {
-      const response = await fetch("https://evox.com/auth/login/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        setSuccess("Login successful! Redirecting...");
-        setError("");
-      } else {
-        setError(data?.message || "Login failed. Please check your credentials.");
-        setSuccess("");
-      }
-    } catch (err) {
-      setError("An error occurred. Please try again.");
+      await login(formData.username, formData.password);
+      
+      // Navigate to the returnTo path after successful login
+      navigate(returnTo);
+    } catch (error) {
+      setError(error.message || 'Login failed. Please check your credentials and try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        px: 2,
-        background: "linear-gradient(to right, #ff9a9e, #fad0c4, #fbc2eb)",
-      }}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5 }}
     >
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: { xs: "column", md: "row" },
-          alignItems: "center",
-          gap: 6,
-          width: "100%",
-          maxWidth: 1200,
-        }}
-      >
-        {/* Left Side - Image Section (Hidden on Small Screens) */}
-        <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
-          style={{ flex: 1, display: "flex", justifyContent: "center" }}
-        >
-          <Box
-            component="img"
-            src={LoginImage}
-            alt="Login"
-            sx={{
-              width: "100%",
-              maxWidth: 500,
-              borderRadius: 3,
-              display: { xs: "none", md: "block" },
-            }}
-          />
-        </motion.div>
-
-        {/* Right Side - Login Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          style={{ flex: 1, width: "100%" }}
-        >
-          <Card
-            sx={{
-              width: "100%",
-              maxWidth: 450,
-              p: { xs: 3, md: 4 },
-              borderRadius: 4,
-              boxShadow: 10,
-              backgroundColor: "#fff",
-            }}
-          >
-            <CardContent>
-              <Typography
-                variant="h3"
-                fontWeight={700}
-                textAlign="center"
-                gutterBottom
-                sx={{
-                  fontSize: { xs: "2rem", md: "2.5rem" },
-                  color: "#FF6F61",
-                }}
-              >
-                Welcome Back
-              </Typography>
-              <Typography
-                variant="h6"
-                textAlign="center"
-                color="text.secondary"
-                mb={3}
-                sx={{
-                  fontSize: { xs: "1rem", md: "1.2rem" },
-                }}
-              >
-                Enter your credentials to continue
-              </Typography>
-
-              {/* Error/Success Alerts */}
-              {error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  {error}
-                </Alert>
-              )}
-              {success && (
-                <Alert severity="success" sx={{ mb: 2 }}>
-                  {success}
-                </Alert>
-              )}
-
-              {/* Email Field */}
-              <motion.div
-                initial={{ opacity: 0, x: -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <TextField
-                  fullWidth
-                  label="Email"
-                  name="email"
-                  variant="outlined"
-                  margin="normal"
-                  onChange={handleChange}
-                  InputProps={{
-                    sx: { fontSize: "1rem" },
-                  }}
-                />
-              </motion.div>
-
-              {/* Password Field */}
-              <motion.div
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <TextField
-                  fullWidth
-                  label="Password"
-                  name="password"
-                  variant="outlined"
-                  type={showPassword ? "text" : "password"}
-                  margin="normal"
-                  onChange={handleChange}
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ fontSize: "1rem" }}
-                />
-              </motion.div>
-
-              {/* Login Button */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.7 }}
-              >
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={handleSubmit}
-                  sx={{
-                    mt: 3,
-                    py: 1.8,
-                    fontSize: "1rem",
-                    borderRadius: 3,
-                    fontWeight: 700,
-                    background:
-                      "linear-gradient(90deg, #ff6f61, #ff9a8b, #ff7eb3)",
-                    "&:hover": {
-                      background: "#ff3d71",
-                    },
-                  }}
-                >
-                  Login
-                </Button>
-              </motion.div>
-
-              {/* Sign Up Link */}
-              <Typography
-                textAlign="center"
-                mt={3}
-                fontSize="1rem"
-                color="text.secondary"
-              >
-                Don’t have an account?{" "}
-                <Typography
-                  component="span"
+      <AuthForm
+        title="Welcome Back"
+        subtitle="Please sign in to your account"
+        onSubmit={handleSubmit}
+        submitText="Sign In"
+        error={error}
+        isLoading={isLoading}
+        image={LoginImage}
+        extraContent={
+          <Box sx={{ mt: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <MuiLink 
+                  component={RouterLink} 
+                  to="/forgot-password" 
                   color="primary"
-                  sx={{
-                    cursor: "pointer",
-                    fontSize: "1rem",
-                    fontWeight: 600,
-                    "&:hover": { textDecoration: "underline" },
-                  }}
+                >
+                  Forgot password?
+                </MuiLink>
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Don't have an account?{' '}
+                <MuiLink 
+                  component={RouterLink} 
+                  to="/register" 
+                  color="primary" 
+                  fontWeight="bold"
                 >
                   Sign Up
-                </Typography>
+                </MuiLink>
               </Typography>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </Box>
-    </Box>
+            </Box>
+          </Box>
+        }
+      >
+        <TextField
+          margin="normal"
+          required
+          fullWidth
+          id="username"
+          label="Username or Email"
+          name="username"
+          autoComplete="username email"
+          autoFocus
+          value={formData.username}
+          onChange={handleChange}
+          error={!!fieldErrors.username}
+          helperText={fieldErrors.username}
+          sx={{ mb: 2 }}
+        />
+        
+        <PasswordField
+          required
+          fullWidth
+          name="password"
+          label="Password"
+          id="password"
+          autoComplete="current-password"
+          value={formData.password}
+          onChange={handleChange}
+          error={!!fieldErrors.password}
+          helperText={fieldErrors.password}
+        />
+        
+        {/* Show non-field errors */}
+        {fieldErrors.non_field_errors && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {fieldErrors.non_field_errors}
+          </Alert>
+        )}
+      </AuthForm>
+    </motion.div>
   );
 };
 
